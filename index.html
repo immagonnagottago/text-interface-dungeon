@@ -230,11 +230,29 @@
     .send-btn:hover { color: var(--gold); background: rgba(200,168,75,0.05); }
 
     footer {
-      padding: 8px 24px;
+      padding: 10px 16px;
       font-size: 0.65rem;
       color: var(--text-dim);
       letter-spacing: 1px;
       border-top: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .action-chip {
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 2px 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-transform: lowercase;
+      letter-spacing: 1px;
+    }
+    .action-chip:hover {
+      border-color: var(--gold-dim);
+      color: var(--gold-dim);
+      background: rgba(200,168,75,0.05);
     }
 
     @media (max-width: 520px) {
@@ -276,7 +294,7 @@
     </div>
   </div>
 
-  <footer>commands: north · south · east · west · take [item] · inventory · open [item] · look</footer>
+  <footer id="actions-bar"><!-- populated by JS --></footer>
 </div>
 
 <script>
@@ -286,6 +304,8 @@
   const invDisplay = document.getElementById('inv-display');
   const exitsDisp  = document.getElementById('exits-display');
   const locBadge   = document.getElementById('loc-badge');
+
+  const actionsBar  = document.getElementById('actions-bar');
 
   let currentLocation = 'entrance';
   let inventory = [];
@@ -309,9 +329,12 @@
     crypt: {
       name: 'Forgotten Crypt',
       description: 'Stone sarcophagi line the walls. The air smells of dust and old bone. An eerie silence reigns.',
-      items: ['old tome']
+      items: ['tome']
     }
   };
+
+  // items that can be opened
+  const openable = ['chest'];
 
   const moves = {
     entrance: { north: 'hall' },
@@ -336,6 +359,8 @@
   }
 
   function updateSidebar() {
+    const room = rooms[currentLocation];
+
     // inventory
     if (inventory.length === 0) {
       invDisplay.innerHTML = '<span class="empty-inv">empty</span>';
@@ -343,14 +368,27 @@
       invDisplay.innerHTML = inventory.map(i => `<div class="inv-item">${i}</div>`).join('');
     }
 
-    // exits
+    // exits sidebar
     const exits = Object.keys(moves[currentLocation] || {});
     exitsDisp.innerHTML = exits.map(e =>
       `<span class="exit-tag" onclick="doCommand('${e}')">${e}</span>`
     ).join('');
 
     // location badge
-    locBadge.textContent = rooms[currentLocation].name;
+    locBadge.textContent = room.name;
+
+    // dynamic actions footer
+    const actions = [];
+    exits.forEach(e => actions.push(e));
+    actions.push('look');
+    actions.push('inv');
+    room.items.forEach(item => actions.push('take ' + item));
+    room.items.filter(i => openable.includes(i)).forEach(i => actions.push('open ' + i));
+
+    actionsBar.innerHTML = actions
+      .filter((v, i, a) => a.indexOf(v) === i) // dedupe
+      .map(a => `<span class="action-chip" onclick="doCommand('${a}')">${a}</span>`)
+      .join('');
   }
 
   function showRoom() {
