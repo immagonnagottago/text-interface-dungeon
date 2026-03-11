@@ -13,18 +13,22 @@
         #output {
             white-space: pre-line;
             margin-bottom: 10px;
+            min-height: 150px;
         }
         input {
             background-color: #222;
             color: #eee;
             border: none;
             padding: 5px;
-            width: 200px;
+            width: 300px;
+        }
+        button {
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
-    <div id="output">Welcome to the dungeon! Type a command to begin.</div>
+    <div id="output">Welcome to the dungeon! Type commands like "north", "south", "take key".</div>
     <input id="command" placeholder="Enter command" autofocus />
     <script src="script.js"></script>
 </body>
