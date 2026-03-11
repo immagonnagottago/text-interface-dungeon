@@ -111,10 +111,26 @@
     }
     .log-entry.cmd { color: var(--gold-dim); }
     .log-entry.cmd::before { content: '> '; color: var(--gold); }
-    .log-entry.info { color: var(--text); }
-    .log-entry.error { color: #8b5050; }
-    .log-entry.success { color: #5a9b6a; }
-    .log-entry.move { color: var(--cyan); }
+    .log-entry.info { color: #7a8a7a; font-size: 0.78rem; letter-spacing: 0.5px; }
+    .log-entry.error { color: #8b5050; font-size: 0.78rem; }
+    .log-entry.success { color: #5a9b6a; font-size: 0.78rem; }
+    .log-entry.move {
+      color: var(--gold);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      margin-top: 4px;
+    }
+    .log-entry.narrate {
+      font-family: 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+      font-style: italic;
+      color: #c8bfaa;
+      font-size: 0.92rem;
+      line-height: 1.8;
+      padding-left: 10px;
+      border-left: 2px solid var(--gold-dim);
+      margin-bottom: 8px;
+    }
     .log-entry.separator {
       color: var(--border);
       margin: 8px 0;
@@ -340,9 +356,9 @@
   function showRoom() {
     const room = rooms[currentLocation];
     log(room.name.toUpperCase(), 'move');
-    log(room.description);
+    log(room.description, 'narrate');
     if (room.items.length > 0) {
-      log('You see here: ' + room.items.join(', ') + '.', 'success');
+      log('You notice: ' + room.items.join(', ') + '.', 'info');
     }
     updateSidebar();
   }
@@ -387,8 +403,8 @@
       if (target === 'chest') {
         if (currentLocation === 'treasury') {
           if (inventory.includes('key')) {
-            log('The key slides into the lock with a satisfying click.', 'info');
-            log('★ You opened the chest! Gold and jewels spill onto the floor. YOU WIN! ★', 'success');
+            log('The key slides into the lock with a satisfying click. The lid groans open.', 'narrate');
+            log('★ YOU WIN — gold and jewels spill across the floor. ★', 'success');
           } else {
             log('The chest is locked. You need a key.', 'error');
           }
@@ -427,7 +443,7 @@
   });
 
   // Init
-  log('The dungeon stretches before you, dark and full of secrets.', 'info');
+  log('The dungeon stretches before you, dark and full of secrets.', 'narrate');
   separator();
   showRoom();
 </script>
