@@ -1,35 +1,435 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Text Dungeon</title>
-    <style>
-        body {
-            font-family: monospace;
-            background-color: #111;
-            color: #eee;
-            padding: 20px;
-        }
-        #output {
-            white-space: pre-line;
-            margin-bottom: 10px;
-            min-height: 150px;
-        }
-        input {
-            background-color: #222;
-            color: #eee;
-            border: none;
-            padding: 5px;
-            width: 300px;
-        }
-        button {
-            margin-top: 5px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>Text Dungeon</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: #2a2a3a;
+      --gold: #c8a84b;
+      --gold-dim: #7a6530;
+      --text: #d4cfc4;
+      --text-dim: #6b6660;
+      --red: #8b2020;
+      --green: #2a6b3a;
+      --cyan: #2a5a6b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background-image:
+        radial-gradient(ellipse at 20% 20%, rgba(200,168,75,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 80%, rgba(42,90,107,0.06) 0%, transparent 60%);
+    }
+
+    .frame {
+      width: 100%;
+      max-width: 720px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+      box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 40px rgba(0,0,0,0.4);
+    }
+
+    .frame::before, .frame::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      border-color: var(--gold);
+      border-style: solid;
+    }
+    .frame::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+    .frame::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+    .corner-tr, .corner-bl {
+      position: absolute;
+      width: 12px; height: 12px;
+      border-color: var(--gold);
+      border-style: solid;
+    }
+    .corner-tr { top: -1px; right: -1px; border-width: 2px 2px 0 0; }
+    .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 2px 2px; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .title {
+      font-family: 'UnifrakturMaguntia', cursive;
+      font-size: 1.8rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+      text-shadow: 0 0 20px rgba(200,168,75,0.4);
+    }
+
+    .location-badge {
+      font-size: 0.7rem;
+      color: var(--gold-dim);
+      border: 1px solid var(--gold-dim);
+      padding: 3px 10px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      grid-template-rows: auto auto;
+      gap: 0;
+    }
+
+    #output {
+      padding: 20px 24px;
+      min-height: 220px;
+      line-height: 1.7;
+      font-size: 0.88rem;
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      overflow-y: auto;
+      max-height: 320px;
+    }
+
+    .log-entry {
+      margin-bottom: 6px;
+      animation: fadeIn 0.2s ease;
+    }
+    .log-entry.cmd { color: var(--gold-dim); }
+    .log-entry.cmd::before { content: '> '; color: var(--gold); }
+    .log-entry.info { color: var(--text); }
+    .log-entry.error { color: #8b5050; }
+    .log-entry.success { color: #5a9b6a; }
+    .log-entry.move { color: var(--cyan); }
+    .log-entry.separator {
+      color: var(--border);
+      margin: 8px 0;
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .sidebar {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .sidebar-section h3 {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--gold-dim);
+      margin-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 4px;
+    }
+
+    .inv-item {
+      font-size: 0.78rem;
+      color: var(--text);
+      padding: 2px 0;
+    }
+    .inv-item::before { content: '◆ '; color: var(--gold); font-size: 0.6rem; }
+    .empty-inv { font-size: 0.75rem; color: var(--text-dim); font-style: italic; }
+
+    .exits-list { display: flex; flex-wrap: wrap; gap: 4px; }
+    .exit-tag {
+      font-size: 0.7rem;
+      border: 1px solid var(--gold-dim);
+      color: var(--gold-dim);
+      padding: 2px 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .exit-tag:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: rgba(200,168,75,0.08);
+    }
+
+    .input-row {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      border-top: 1px solid var(--border);
+      padding: 0;
+    }
+
+    .prompt-symbol {
+      padding: 0 14px;
+      color: var(--gold);
+      font-size: 1rem;
+      user-select: none;
+      border-right: 1px solid var(--border);
+    }
+
+    #command {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.88rem;
+      padding: 14px 16px;
+      caret-color: var(--gold);
+    }
+
+    #command::placeholder { color: var(--text-dim); }
+
+    .send-btn {
+      background: none;
+      border: none;
+      border-left: 1px solid var(--border);
+      color: var(--gold-dim);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      padding: 14px 16px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      transition: all 0.15s;
+    }
+    .send-btn:hover { color: var(--gold); background: rgba(200,168,75,0.05); }
+
+    footer {
+      padding: 8px 24px;
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      letter-spacing: 1px;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 520px) {
+      .main { grid-template-columns: 1fr; }
+      .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+      #output { border-right: none; }
+    }
+  </style>
 </head>
 <body>
-    <div id="output">Welcome to the dungeon! Type commands like "north", "south", "take key".</div>
-    <input id="command" placeholder="Enter command" autofocus />
-    <script src="script.js"></script>
+
+<div class="frame">
+  <div class="corner-tr"></div>
+  <div class="corner-bl"></div>
+
+  <header>
+    <div class="title">Dungeon</div>
+    <div class="location-badge" id="loc-badge">Entrance</div>
+  </header>
+
+  <div class="main">
+    <div id="output"></div>
+
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <h3>Inventory</h3>
+        <div id="inv-display"><span class="empty-inv">empty</span></div>
+      </div>
+      <div class="sidebar-section">
+        <h3>Exits</h3>
+        <div class="exits-list" id="exits-display"></div>
+      </div>
+    </div>
+
+    <div class="input-row">
+      <span class="prompt-symbol">›</span>
+      <input id="command" placeholder="enter command…" autofocus autocomplete="off" spellcheck="false" />
+      <button class="send-btn" id="send-btn">Enter</button>
+    </div>
+  </div>
+
+  <footer>commands: north · south · east · west · take [item] · inventory · open [item] · look</footer>
+</div>
+
+<script>
+  const outputEl   = document.getElementById('output');
+  const commandEl  = document.getElementById('command');
+  const sendBtn    = document.getElementById('send-btn');
+  const invDisplay = document.getElementById('inv-display');
+  const exitsDisp  = document.getElementById('exits-display');
+  const locBadge   = document.getElementById('loc-badge');
+
+  let currentLocation = 'entrance';
+  let inventory = [];
+
+  const rooms = {
+    entrance: {
+      name: 'Dungeon Entrance',
+      description: 'Cold stone walls drip with moisture. A rusted iron portcullis stands to the north, slightly ajar.',
+      items: []
+    },
+    hall: {
+      name: 'Dark Hall',
+      description: 'Torch sconces line the walls, their flames long extinguished. A key glints on the floor.',
+      items: ['key']
+    },
+    treasury: {
+      name: 'Treasury',
+      description: 'Gold coins are scattered across the floor. A large iron chest sits against the far wall, sealed with a heavy lock.',
+      items: ['chest']
+    },
+    crypt: {
+      name: 'Forgotten Crypt',
+      description: 'Stone sarcophagi line the walls. The air smells of dust and old bone. An eerie silence reigns.',
+      items: ['old tome']
+    }
+  };
+
+  const moves = {
+    entrance: { north: 'hall' },
+    hall:     { south: 'entrance', east: 'treasury', west: 'crypt' },
+    treasury: { west: 'hall' },
+    crypt:    { east: 'hall' }
+  };
+
+  function log(text, type = 'info') {
+    const div = document.createElement('div');
+    div.className = `log-entry ${type}`;
+    div.textContent = text;
+    outputEl.appendChild(div);
+    outputEl.scrollTop = outputEl.scrollHeight;
+  }
+
+  function separator() {
+    const div = document.createElement('div');
+    div.className = 'log-entry separator';
+    div.textContent = '─────────────────────────';
+    outputEl.appendChild(div);
+  }
+
+  function updateSidebar() {
+    // inventory
+    if (inventory.length === 0) {
+      invDisplay.innerHTML = '<span class="empty-inv">empty</span>';
+    } else {
+      invDisplay.innerHTML = inventory.map(i => `<div class="inv-item">${i}</div>`).join('');
+    }
+
+    // exits
+    const exits = Object.keys(moves[currentLocation] || {});
+    exitsDisp.innerHTML = exits.map(e =>
+      `<span class="exit-tag" onclick="doCommand('${e}')">${e}</span>`
+    ).join('');
+
+    // location badge
+    locBadge.textContent = rooms[currentLocation].name;
+  }
+
+  function showRoom() {
+    const room = rooms[currentLocation];
+    log(room.name.toUpperCase(), 'move');
+    log(room.description);
+    if (room.items.length > 0) {
+      log('You see here: ' + room.items.join(', ') + '.', 'success');
+    }
+    updateSidebar();
+  }
+
+  function processCommand(raw) {
+    const cmd = raw.toLowerCase().trim();
+    if (!cmd) return;
+
+    log(raw, 'cmd');
+
+    const exits = moves[currentLocation] || {};
+
+    if (cmd in exits) {
+      currentLocation = exits[cmd];
+      separator();
+      showRoom();
+
+    } else if (cmd === 'look') {
+      showRoom();
+
+    } else if (cmd.startsWith('take ')) {
+      const item = cmd.slice(5).trim();
+      const roomItems = rooms[currentLocation].items;
+      if (roomItems.includes(item)) {
+        inventory.push(item);
+        rooms[currentLocation].items = roomItems.filter(i => i !== item);
+        log(`You picked up the ${item}.`, 'success');
+        updateSidebar();
+      } else {
+        log(`There is no ${item} here.`, 'error');
+      }
+
+    } else if (cmd === 'inventory' || cmd === 'inv' || cmd === 'i') {
+      if (inventory.length === 0) {
+        log('Your pockets are empty.', 'info');
+      } else {
+        log('You carry: ' + inventory.join(', ') + '.', 'info');
+      }
+
+    } else if (cmd.startsWith('open ')) {
+      const target = cmd.slice(5).trim();
+      if (target === 'chest') {
+        if (currentLocation === 'treasury') {
+          if (inventory.includes('key')) {
+            log('The key slides into the lock with a satisfying click.', 'info');
+            log('★ You opened the chest! Gold and jewels spill onto the floor. YOU WIN! ★', 'success');
+          } else {
+            log('The chest is locked. You need a key.', 'error');
+          }
+        } else {
+          log('There is no chest here.', 'error');
+        }
+      } else {
+        log(`You cannot open the ${target}.`, 'error');
+      }
+
+    } else {
+      log(`Unknown command: "${cmd}". Try: north, south, east, west, look, take [item], inventory, open [item].`, 'error');
+    }
+  }
+
+  function doCommand(cmd) {
+    processCommand(cmd);
+    commandEl.focus();
+  }
+
+  // Enter key on input
+  commandEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      const val = commandEl.value;
+      commandEl.value = '';
+      processCommand(val);
+    }
+  });
+
+  // Button click
+  sendBtn.addEventListener('click', function() {
+    const val = commandEl.value;
+    commandEl.value = '';
+    processCommand(val);
+    commandEl.focus();
+  });
+
+  // Init
+  log('The dungeon stretches before you, dark and full of secrets.', 'info');
+  separator();
+  showRoom();
+</script>
 </body>
 </html>
