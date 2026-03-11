@@ -173,35 +173,14 @@
 
     /* ── MAP ── */
     #map-display {
-      position: relative;
       width: 100%;
-      height: 130px;
+      overflow: hidden;
     }
-    .map-room {
-      position: absolute;
-      border: 1px solid var(--border);
-      font-size: 0.55rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      text-align: center;
-      padding: 4px 5px;
-      line-height: 1.3;
-      color: var(--text-dim);
-      transition: all 0.2s;
-      white-space: nowrap;
-      background: var(--bg);
+    #map-display svg {
+      width: 100%;
+      height: auto;
+      display: block;
     }
-    .map-room.current {
-      border-color: var(--gold);
-      color: var(--gold);
-      box-shadow: 0 0 8px rgba(200,168,75,0.3), inset 0 0 8px rgba(200,168,75,0.05);
-    }
-    .map-corridor-h, .map-corridor-v {
-      position: absolute;
-      background: var(--border);
-    }
-    .map-corridor-h { height: 1px; }
-    .map-corridor-v { width: 1px; }
 
     .input-row {
       grid-column: 1 / -1;
@@ -363,75 +342,46 @@
     crypt:    { east: 'hall' }
   };
 
-  // Map layout: each room has a grid col/row (1-indexed), and a short label
-  // Layout:  [crypt(1,1)]--[hall(2,1)]--[treasury(3,1)]
-  //                              |
-  //                        [entrance(2,2)]
-  const mapLayout = {
-    crypt:    { col: 1, row: 1, label: 'Crypt' },
-    hall:     { col: 2, row: 1, label: 'Hall'  },
-    treasury: { col: 3, row: 1, label: 'Vault' },
-    entrance: { col: 2, row: 2, label: 'Entry' },
-  };
-
   function renderMap() {
-    mapDisplay.innerHTML = '';
-
-    const cellW = 44, cellH = 36, gapX = 22, gapY = 22;
-    const padX = 6, padY = 8;
-
-    // draw corridors first (behind rooms)
-    const corridors = [
-      { from: 'crypt', to: 'hall' },
-      { from: 'hall',  to: 'treasury' },
-      { from: 'hall',  to: 'entrance' },
+    // Simple grid: col/row positions, drawn as plain squares
+    // Layout:
+    //  [Crypt][Hall][Vault]
+    //         [Entry]
+    const grid = [
+      { id: 'crypt',    col: 0, row: 0, label: 'Crypt' },
+      { id: 'hall',     col: 1, row: 0, label: 'Hall'  },
+      { id: 'treasury', col: 2, row: 0, label: 'Vault' },
+      { id: 'entrance', col: 1, row: 1, label: 'Entry' },
     ];
 
-    corridors.forEach(({ from, to }) => {
-      const a = mapLayout[from], b = mapLayout[to];
-      const ax = padX + (a.col - 1) * (cellW + gapX) + cellW / 2;
-      const ay = padY + (a.row - 1) * (cellH + gapY) + cellH / 2;
-      const bx = padX + (b.col - 1) * (cellW + gapX) + cellW / 2;
-      const by = padY + (b.row - 1) * (cellH + gapY) + cellH / 2;
+    const S = 40; // square size
+    const G = 2;  // gap
+    const PAD = 4;
 
-      const line = document.createElement('div');
-      if (a.row === b.row) {
-        // horizontal
-        line.className = 'map-corridor-h';
-        line.style.left  = Math.min(ax, bx) + 'px';
-        line.style.top   = ay + 'px';
-        line.style.width = Math.abs(bx - ax) + 'px';
-      } else {
-        // vertical
-        line.className = 'map-corridor-v';
-        line.style.left   = ax + 'px';
-        line.style.top    = Math.min(ay, by) + 'px';
-        line.style.height = Math.abs(by - ay) + 'px';
-      }
-      mapDisplay.appendChild(line);
-    });
+    const W = 3 * S + 2 * G + PAD * 2;
+    const H = 2 * S + 1 * G + PAD * 2;
 
-    // draw rooms
-    Object.entries(mapLayout).forEach(([id, pos]) => {
-      const x = padX + (pos.col - 1) * (cellW + gapX);
-      const y = padY + (pos.row - 1) * (cellH + gapY);
+    const squares = grid.map(({ id, col, row, label }) => {
+      const x = PAD + col * (S + G);
+      const y = PAD + row * (S + G);
+      const cur = id === currentLocation;
+      const fill   = cur ? 'rgba(200,168,75,0.12)' : 'rgba(10,10,15,0.6)';
+      const stroke = cur ? '#c8a84b' : '#2a2a3a';
+      const sWidth = cur ? 1.5 : 1;
+      const tFill  = cur ? '#c8a84b' : '#4a4a5a';
+      return `
+        <rect x="${x}" y="${y}" width="${S}" height="${S}"
+          fill="${fill}" stroke="${stroke}" stroke-width="${sWidth}"/>
+        <text x="${x + S/2}" y="${y + S/2}" text-anchor="middle" dominant-baseline="middle"
+          font-family="'Share Tech Mono',monospace" font-size="7" fill="${tFill}"
+          letter-spacing="0.5">${label.toUpperCase()}</text>`;
+    }).join('');
 
-      const el = document.createElement('div');
-      el.className = 'map-room' + (id === currentLocation ? ' current' : '');
-      el.style.left   = x + 'px';
-      el.style.top    = y + 'px';
-      el.style.width  = cellW + 'px';
-      el.style.height = cellH + 'px';
-      el.style.display = 'flex';
-      el.style.alignItems = 'center';
-      el.style.justifyContent = 'center';
-      el.textContent = pos.label;
-      mapDisplay.appendChild(el);
-    });
-
-    // set container height
-    const maxRow = Math.max(...Object.values(mapLayout).map(p => p.row));
-    mapDisplay.style.height = (padY * 2 + maxRow * cellH + (maxRow - 1) * gapY) + 'px';
+    mapDisplay.innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+           style="width:100%;height:auto;display:block;">
+        ${squares}
+      </svg>`;
   }
 
   function log(text, type = 'info') {
